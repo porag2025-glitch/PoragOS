@@ -132,6 +132,16 @@ int paging_map_page(virt_addr_t virt, phys_addr_t phys, u32 flags)
     return 0;
 }
 
+/* Map [phys, phys+bytes) at [virt, ...). All three must be 4 KiB aligned. 0 = ok, -1 = failure. */
+int paging_map_range(virt_addr_t virt, phys_addr_t phys, u32 bytes, u32 flags)
+{
+    if ((virt | phys | bytes) & (PAGE_SIZE - 1)) return -1;      /* Must be page aligned */
+    for (u32 off = 0; off < bytes; off += PAGE_SIZE) {
+        if (paging_map_page(virt + off, phys + off, flags) != 0) return -1;
+    }
+    return 0;
+}
+
 phys_addr_t paging_unmap_page(virt_addr_t virt)
 {
     u32 pdi = virt >> 22;

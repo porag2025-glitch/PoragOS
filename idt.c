@@ -30,7 +30,7 @@ static struct idt_ptr   idt_pointer;
 static isr_t            handlers[IDT_ENTRIES];  /* Registered C handlers (NULL = none) */
 
 extern void idt_flush(u32 idt_ptr_addr);        /* interrupt.asm: runs LIDT */
-extern u32  isr_stub_table[48];                 /* interrupt.asm: addresses of the 48 asm stubs */
+extern u32  isr_stub_table[48];               /* interrupt.asm: addresses of the 48 asm stubs */
 
 /* Human-readable names of the 32 CPU exceptions */
 static const char *exception_names[32] = {
@@ -77,6 +77,14 @@ void isr_handler(registers_t *regs)
 {
     u32 n = regs->int_no;                                   /* Which vector fired? */
 
+    /* Acknowledge hardware IRQs BEFORE running the handler.
+     * Why: the IRQ0 timer handler may context-switch to another task and not return
+     * right away. If we waited until after handlers[n]() returned, the PIC would stay
+     * blocked until the original task was scheduled back. */
+    if (n >= 32 && n < 48) {
+        pic_send_eoi((u8)(n - 32));                         /* Tell the PIC we are done */
+    }
+
     if (handlers[n] != NULL) {                              /* A handler is registered: run it */
         handlers[n](regs);
     } else if (n < 32) {                                    /* Unhandled CPU exception: fatal for now */
@@ -93,9 +101,5 @@ void isr_handler(registers_t *regs)
         for (;;) {                                          /* Freeze the machine */
             __asm__ volatile ("cli; hlt");
         }
-    }
-
-    if (n >= 32 && n < 48) {                                /* It was a hardware IRQ ... */
-        pic_send_eoi((u8)(n - 32));                         /* ... tell the PIC we are done */
     }
 }

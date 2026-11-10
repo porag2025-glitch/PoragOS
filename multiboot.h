@@ -1,37 +1,80 @@
-/* multiboot.h - the parts of the Multiboot 1 information structure we use.
- * GRUB builds this structure in memory and passes its address in EBX. */
+/* multiboot.h - Multiboot info structure and flag definitions */
 #ifndef MULTIBOOT_H
 #define MULTIBOOT_H
 
 #include "types.h"
 
-#define MULTIBOOT_FLAG_MEM   (1u << 0)   /* mem_lower / mem_upper fields are valid */
-#define MULTIBOOT_FLAG_MODS  (1u << 3)   /* mods_count / mods_addr are valid */
-#define MULTIBOOT_FLAG_MMAP  (1u << 6)   /* mmap_length / mmap_addr are valid */
+/* Multiboot information flags */
+#define MULTIBOOT_FLAG_MEM       (1 << 0)
+#define MULTIBOOT_FLAG_DEVICE    (1 << 1)
+#define MULTIBOOT_FLAG_CMDLINE   (1 << 2)
+#define MULTIBOOT_FLAG_MODS      (1 << 3)
+#define MULTIBOOT_FLAG_AOUT      (1 << 4)
+#define MULTIBOOT_FLAG_ELF       (1 << 5)
+#define MULTIBOOT_FLAG_MMAP      (1 << 6)
+#define MULTIBOOT_FLAG_DRV       (1 << 7)
+#define MULTIBOOT_FLAG_CONFIG    (1 << 8)
+#define MULTIBOOT_FLAG_LOADER    (1 << 9)
+#define MULTIBOOT_FLAG_APM       (1 << 10)
+#define MULTIBOOT_FLAG_VBE       (1 << 11)
+#define MULTIBOOT_FLAG_FB        (1 << 12)
+#define MULTIBOOT_FLAG_FRAMEBUFFER (1u << 12)
 
-#define MULTIBOOT_MEMORY_AVAILABLE 1     /* mmap entry type: ordinary usable RAM */
+/* Memory map types */
+#define MULTIBOOT_MEMORY_AVAILABLE        1
+#define MULTIBOOT_MEMORY_RESERVED         2
+#define MULTIBOOT_MEMORY_ACPI_RECLAIMABLE 3
+#define MULTIBOOT_MEMORY_NVS              4
+#define MULTIBOOT_MEMORY_BADRAM           5
 
-/* Fixed layout from the Multiboot specification. Packed: no padding allowed. */
-struct multiboot_info {
-    u32 flags;          /* Which of the following fields are valid (bit mask) */
-    u32 mem_lower;      /* KiB of memory below 1 MiB */
-    u32 mem_upper;      /* KiB of memory above 1 MiB (contiguous from 1 MiB) */
-    u32 boot_device;
-    u32 cmdline;
-    u32 mods_count;     /* Number of boot modules loaded by GRUB */
-    u32 mods_addr;      /* Physical address of the module array */
-    u32 syms[4];        /* ELF/a.out symbol info (unused) */
-    u32 mmap_length;    /* Total size in bytes of the memory-map buffer */
-    u32 mmap_addr;      /* Physical address of the first memory-map entry */
+struct multiboot_mmap_entry {
+    u32 size;
+    u64 addr;
+    u64 len;
+    u32 type;
 } __attribute__((packed));
 
-/* One memory-map entry. NOTE: `size` does NOT count itself, so the next
- * entry starts at (this entry's address + size + 4). */
-struct multiboot_mmap_entry {
-    u32 size;           /* Size of the rest of this entry (normally 20) */
-    u64 addr;           /* Start physical address of the region */
-    u64 len;            /* Length of the region in bytes */
-    u32 type;           /* 1 = usable RAM, 2 = reserved, 3 = ACPI reclaimable, 4 = ACPI NVS, 5 = bad RAM */
+/* Multiboot module entry structure for ramdisk / initrd */
+struct multiboot_mod_entry {
+    u32 mod_start;
+    u32 mod_end;
+    u32 string;
+    u32 reserved;
+} __attribute__((packed));
+
+struct multiboot_info {
+    u32 flags;
+    u32 mem_lower;
+    u32 mem_upper;
+    u32 boot_device;
+    u32 cmdline;
+    u32 mods_count;
+    u32 mods_addr;
+    u32 syms[4];
+    u32 mmap_length;
+    u32 mmap_addr;
+    u32 drives_length;
+    u32 drives_addr;
+    u32 config_table;
+    u32 boot_loader_name;
+    u32 apm_table;
+    u32 vbe_control_info;
+    u32 vbe_mode_info;
+    u16 vbe_mode;
+    u16 vbe_interface_seg;
+    u16 vbe_interface_off;
+    u16 vbe_interface_len;
+
+    /* Framebuffer fields (Multiboot Graphics)[cite: 18] */
+    u64 framebuffer_addr;
+    u32 framebuffer_pitch;
+    u32 framebuffer_width;
+    u32 framebuffer_height;
+    u8  framebuffer_bpp;
+    u8  framebuffer_type;       /* 0 = indexed, 1 = direct RGB, 2 = EGA TEXT[cite: 18] */
+    u8  red_pos,   red_size;
+    u8  green_pos, green_size;
+    u8  blue_pos,  blue_size;
 } __attribute__((packed));
 
 #endif /* MULTIBOOT_H */
